@@ -255,7 +255,7 @@ int main(const int argc, const char * const* argv){
             "\n"
             "#undef _EmbeddedResourceFile_table\n"
             "#undef _EmbeddedResourceFile_table_count\n"
-            "#undef EMBEDDED_RESOURCE_POSTFIX\n",
+            "#undef EMBEDDED_RESOURCE_POSTFIX\n"
             "#undef RSCAT\n",
             _input_files_n);
         if(!out_file_set)
