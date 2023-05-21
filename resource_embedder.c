@@ -114,32 +114,31 @@ void process_file(const char* input_file_path,
             out_file_path, _sp1);
         free(_sp1);
         fprintf(out_file,
-            "typedef unsigned char _byte;\n"
             "\n"
             "typedef struct {\n"
             "    char* path;\n"
-            "    _byte* data;\n"
+            "    char* data;\n"
             "    unsigned long long size;\n"
             "} EmbeddedResourceFile;\n"
             "\n"
-            "#ifndef _EmbeddedResourceFile_table\n"
+            "#define RSCAT(A,B,C...) A##B##C"
+            "\n"
             "#ifdef EMBEDDED_RESOURCE_POSTFIX\n"
-            "    #define _EmbeddedResourceFile_table \\\n"
-            "        EmbeddedResourceFile_table##EMBEDDED_RESOURCE_POSTFIX\n"
-            "    #define _EmbeddedResourceFile_table_count \\\n"
-            "        EmbeddedResourceFile_table##EMBEDDED_RESOURCE_POSTFIX##_count\n"
+            "    #define _EmbeddedResourceFile_table(P) \\\n"
+            "        RSCAT(EmbeddedResourceFile_table_, P)\n"
+            "    #define _EmbeddedResourceFile_table_count(P) \\\n"
+            "        RSCAT(EmbeddedResourceFile_table_, P, _count)\n"
             "#else\n"
-            "    #define _EmbeddedResourceFile_table \\\n"
+            "    #define _EmbeddedResourceFile_table(P) \\\n"
             "        EmbeddedResourceFile_table\n"
-            "    #define _EmbeddedResourceFile_table_count \\\n"
+            "    #define _EmbeddedResourceFile_table_count(P) \\\n"
             "        EmbeddedResourceFile_table_count\n"
             "#endif\n"
-            "#endif\n"
-            "extern EmbeddedResourceFile _EmbeddedResourceFile_table[];\n"
-            "extern unsigned int _EmbeddedResourceFile_table_count;"
+            "extern EmbeddedResourceFile _EmbeddedResourceFile_table(EMBEDDED_RESOURCE_POSTFIX)[];\n"
+            "extern unsigned int _EmbeddedResourceFile_table_count(EMBEDDED_RESOURCE_POSTFIX);"
             "\n"
             "\n"
-            "EmbeddedResourceFile _EmbeddedResourceFile_table[]={\n");
+            "EmbeddedResourceFile _EmbeddedResourceFile_table(EMBEDDED_RESOURCE_POSTFIX)[]={\n");
         print_line(print_lines, false);
     }
 
@@ -157,20 +156,21 @@ void process_file(const char* input_file_path,
     fprintf(out_file,
         "  {\n"
         "    .path=(char*)\"%s\",\n"
-        "    .data=(_byte[]){",
+        "    .data=(char[]){",
         embedded_file_path);
 
     // writing input file content
     int byte=0;
     unsigned long long size=0;
     while( (byte=fgetc(input_file)) != EOF ){
-        if(size!=0)
-            fprintf(out_file, ",");
         if(size%16==0)
             fprintf(out_file, "\n      ");
-        fprintf(out_file, "0x%X", byte);
+        fprintf(out_file, "0x%02X,", byte);
         size+=1;
     }
+    // trailing zero to use file.data as cstring
+    fprintf(out_file, "0x0");
+
     fprintf(out_file,
         "\n    },\n"
         "    .size=%llu\n"
@@ -251,7 +251,12 @@ int main(const int argc, const char * const* argv){
             print_line(true, false);
         fprintf(out_file, 
             "\n};\n\n"
-            "unsigned int _EmbeddedResourceFile_table_count=%u;\n",
+            "unsigned int _EmbeddedResourceFile_table_count(EMBEDDED_RESOURCE_POSTFIX)=%u;\n"
+            "\n"
+            "#undef _EmbeddedResourceFile_table\n"
+            "#undef _EmbeddedResourceFile_table_count\n"
+            "#undef EMBEDDED_RESOURCE_POSTFIX\n",
+            "#undef RSCAT\n",
             _input_files_n);
         if(!out_file_set)
             fclose(out_file);
